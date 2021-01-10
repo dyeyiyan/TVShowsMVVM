@@ -1,8 +1,10 @@
 package com.deviyan.tvshowsmvvm.activities;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.databinding.DataBindingUtil;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
 
@@ -21,6 +23,8 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding activityMainBinding;
     private List<TVShowsModel> tvShowsModels = new ArrayList<>();
     private TVShowsAdapter tvShowsAdapter;
+    private int currentPage = 1;
+    private int totalAvailablePages = 1;
 
 
     @Override
@@ -36,19 +40,51 @@ public class MainActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(MostPopularTVShowsViewModel.class);
         tvShowsAdapter = new TVShowsAdapter(tvShowsModels);
         activityMainBinding.tvShowsRecyclerView.setAdapter(tvShowsAdapter);
+        activityMainBinding.tvShowsRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if(!activityMainBinding.tvShowsRecyclerView.canScrollVertically(1)){
+                    if(currentPage <= totalAvailablePages){
+                        currentPage += 1;
+                        getMostPopularTVShows();
+                    }
+                }
+            }
+        });
         getMostPopularTVShows();
     }
 
     private void getMostPopularTVShows() {
-        viewModel.getMostPopularTVShows(0).observe(this, mostPopularTVShowsResponse -> {
-            activityMainBinding.setIsLoading(false);
+        toggleLoading();
+        viewModel.getMostPopularTVShows(currentPage).observe(this, mostPopularTVShowsResponse -> {
+            //activityMainBinding.setIsLoading(false);
+            toggleLoading();
             if(mostPopularTVShowsResponse != null){
+                totalAvailablePages = mostPopularTVShowsResponse.getTotalPages();
                 if(mostPopularTVShowsResponse.getTvShowsModels() != null){
+                    int oldCount = tvShowsModels.size();
                     tvShowsModels.addAll(mostPopularTVShowsResponse.getTvShowsModels());
-                    tvShowsAdapter.notifyDataSetChanged();
+                    tvShowsAdapter.notifyItemRangeInserted(oldCount, tvShowsModels.size());
                 }
             }
         });
+    }
+
+    private void toggleLoading() {
+        if(currentPage == 1){
+            if(activityMainBinding.getIsLoading() != null && activityMainBinding.getIsLoading()){
+                activityMainBinding.setIsLoading(false);
+            }else {
+                activityMainBinding.setIsLoading(true);
+            }
+        } else{
+            if(activityMainBinding.getIsLoadingMore() != null && activityMainBinding.getIsLoadingMore()){
+                activityMainBinding.setIsLoadingMore(false);
+            }else{
+                activityMainBinding.setIsLoadingMore(true);
+            }
+        }
     }
 
 
